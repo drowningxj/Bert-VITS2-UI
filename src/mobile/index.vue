@@ -1,18 +1,46 @@
 <script>
+  // 引入css
+import 'vant/es/toast/style';
+import 'vant/es/notify/style' 
+
 import select_model from "@/components/infer/select_model.vue";
 import status_card from "@/components/infer/status_card.vue";
 import model_card from "@/components/infer/model_card.vue";
 import colorTable from "@/color";
 import axios from "axios";
+import { showNotify, closeNotify,showFailToast } from 'vant';
 import {CheckOutlined, CloseOutlined, DownloadOutlined, UploadOutlined} from "@ant-design/icons-vue";
 
 const remote_url = "http://43.128.55.145:5000"
 
 export default {
   name: "infer",
-  components: {DownloadOutlined, model_card, status_card, select_model, CheckOutlined, CloseOutlined, UploadOutlined},
+  components: {DownloadOutlined, CheckOutlined, CloseOutlined, UploadOutlined},
+ 
   data() {
+    let model_audio_loading = false;
+    const selectModel = (modelId) => {
+      this.audio_pic = "img/live" + modelId + ".jpg";
+      
+       if(modelId == 0) {
+        this.audio_title = '直播带货场景';
+        this.audio_desc = '为直播内容创作者、主播提供全球最好的中文声音克隆技术';
+      }
+      if(modelId == 1) {
+        this.audio_title = '知识付费场景';
+        this.audio_desc = '为知识付费、读书、博客APP等平台的老师们提供全球最好的中文声音克隆技术';
+      }
+    }
     return {
+      checked_model_id: 0,
+      audio_pic: 'img/live0.jpg',
+      audio_title: '直播带货场景',
+      audio_desc: '为直播内容创作者、主播提供全球最好的中文声音克隆技术',
+      model_audio_loading,
+      model_audio_data_src: "",
+      model_audio_valid: false,
+      model_audio_data_texts: "",
+      selectModel,
       generate_audio_loading: false,
       delete_model_loading: false,
       colorTable: colorTable,
@@ -87,6 +115,19 @@ export default {
                 },
                 "id2spk": {
                   "0": "lilith"
+                },
+                "version": "2.2"
+              },
+              "1": {
+                "config_path": "Data/zhanghua/config.json",
+                "model_path": "models/zhanghua/G_27400.pth",
+                "device": "cpu",
+                "language": "ZH",
+                "spk2id": {
+                  "zhanghua": 1
+                },
+                "id2spk": {
+                  "1": "zhanghua"
                 },
                 "version": "2.2"
               }
@@ -170,28 +211,23 @@ export default {
       }
       let formData = new FormData()
       formData.append("text", texts)
-      // 仅当使用参考音频且音频有效时生效
-      if (this.global_use_reference_audio && this.random_audio.valid && this.random_audio.audio_file !== null) {
-        formData.append("reference_audio", this.random_audio.audio_file)
-      }
       try {
-        model.audio.loading = true
+        this.model_audio_loading = true
         let response = await axios.post(url, formData, {
           params: params,
           responseType: "blob"
         })
         if (response.status === 200) {
           let data = response.data
-          console.log(data)
-          model.audio.loading = false
-          model.audio.data.src = URL.createObjectURL(data)
-          model.audio.valid = true
-          model.audio.data.texts = texts
+          this.model_audio_loading = false
+          this.model_audio_data_src = URL.createObjectURL(data)
+          this.model_audio_valid = true
+          this.model_audio_data_texts = texts
         } else {
-          model.audio.loading = false
+          this.model_audio_loading = false
         }
       } catch (error) {
-        model.audio.loading = false
+        this.model_audio_loading = false
         console.error("推理失败", error)
       }
     },
@@ -219,43 +255,23 @@ export default {
           this.models[left] = temp
         }
       }
-      this.generate_audio_loading = true
+      
       for (let model of this.models.values()) {
         // 消除上次的音频
+        
+        console.log(this.checked_model_id + "model.id " + model.id)
+        if (!this.texts || this.texts.trim() === '') {
+          showFailToast('请输入文字');
+          return;
+        }
+        this.generate_audio_loading = true
         model.audio.valid = false
-        if (model.selected) {
+        if (model.id === this.checked_model_id) {
+          showNotify({message : model.speaker_name + " 音频生成中" , type: 'success'});
           await this.infer_audio(this.texts, model, this.auto_split)
         }
       }
       this.generate_audio_loading = false
-    },
-
-    all_choices_button() {
-      if (this.select_all_choices.status === false) {
-        this.select_all_choices.status = true
-        this.select_all_choices.type = "default"
-        this.select_all_choices.text = "取消选项全选"
-        this.global_sdp_ratio_selected = true
-        this.global_noise_selected = true
-        this.global_noisew_selected = true
-        this.global_length_selected = true
-        this.global_emotion_selected = true
-        this.global_prompt_selected = true
-        this.global_speaker_selected = true
-        this.global_language_selected = true
-      } else {
-        this.select_all_choices.status = false
-        this.select_all_choices.type = "primary"
-        this.select_all_choices.text = "选项全选"
-        this.global_sdp_ratio_selected = false
-        this.global_noise_selected = false
-        this.global_noisew_selected = false
-        this.global_length_selected = false
-        this.global_emotion_selected = false
-        this.global_prompt_selected = false
-        this.global_speaker_selected = false
-        this.global_language_selected = false
-      }
     },
 
     all_models_button() {
@@ -273,81 +289,6 @@ export default {
         for (let model of this.models.values()) {
           model.selected = false
         }
-      }
-    },
-    apply_global_setting() {
-      for (let model of this.models.values()) {
-        if (model.selected === true) {
-          if (this.global_sdp_ratio_selected === true) {
-            model.sdp_ratio = this.global_sdp_ratio
-          }
-          if (this.global_noise_selected === true) {
-            model.noise = this.global_noise
-          }
-          if (this.global_noisew_selected === true) {
-            model.noisew = this.global_noisew
-          }
-          if (this.global_length_selected === true) {
-            model.length = this.global_length
-          }
-          if (this.global_emotion_selected === true) {
-            model.emotion = this.global_emotion
-          }
-          if (this.global_prompt_selected === true) {
-            model.prompt = this.global_prompt
-          }
-          if (this.global_speaker_selected === true) {
-            if (model.speakers.includes(this.global_speaker)) {
-              model.speaker_name = this.global_speaker
-            }
-          }
-          if (this.global_language_selected === true) {
-            model.language = this.global_language
-          }
-        }
-      }
-    },
-
-    async get_random_audio() {
-      // 获取随机音频
-      this.random_audio.valid = false
-      let url = `/tools/random_example`
-      let params = {
-        "language": this.random_language,
-        "root_dir": this.audio_dir
-      }
-      if (this.random_language === "随机") {
-        params = {
-          "root_dir": this.audio_dir
-        }
-      }
-      try {
-        let response = await axios.get(url, {params: params})
-        if (response.status === 200) {
-          let data = response.data
-          console.log(data)
-          if (data["status"] !== 0) {
-            this.texts = data["detail"]
-            return
-          }
-          data = data["Data"]
-          this.random_audio.data.speaker = data["speaker"]
-          this.random_audio.data.text = data["text"]
-          this.texts = data["text"]
-          this.random_audio.data.src = `tools/get_audio?path=${data["audio"]}`
-          // 下载音频
-          try {
-            const response = await axios.get(remote_url + `/tools/get_audio?path=${data["audio"]}`, {responseType: 'blob'})
-            const blob = new Blob([response.data])
-            this.random_audio.audio_file = new File([blob], "random.mp3")
-            this.random_audio.valid = true
-            this.random_audio.data.name = ""
-            console.log(this.random_audio.audio_file)
-          } catch (error) {
-          }
-        }
-      } catch (error) {
-        console.error(`音频获取失败`, error)
       }
     },
 
@@ -386,98 +327,54 @@ export default {
 }
 </script>
 <template>
-  <a-row justify="start" :gutter="[16,16]" align="bottom">
-    <!--
-    <a-divider :style="{'background-color':colorTable[5], 'height':'2px'} "/>
-    -->
-    <a-col :span="12">
-      <a-row justify="start" :gutter="[16,16]" align="bottom">
-        <a-col :span="24">
-          <select_model></select_model>
-        </a-col>
-        <!-- 文本栏 -->
-        <van-cell-group>
-          <a-card title="输入文本内容">
-            <a-row justify="start" :gutter="[16,16]">
-              <van-field type="textarea" v-model:value="texts" placeholder="请输入文本" :rows="7"/>
-              <a-col :span="24">
-                <a-space :size="24">
-                  <a-button type="primary" @click="infers(false)" :loading="generate_audio_loading">生成音频</a-button>
-                </a-space>
-              </a-col>
-            </a-row>
-          </a-card>
-        </van-cell-group>
+  <van-radio-group v-model="checked_model_id">
+  <van-cell-group inset>
+    <van-cell title="直播带货-小莉" @click="selectModel('0')" clickable >
+      <template #right-icon>
+        <van-radio name="0"  />
+      </template>
+    </van-cell>
+    <van-cell title="育儿专家-张老师" @click="selectModel('1')" clickable >
+      <template #right-icon>
+        <van-radio name="1" />
+      </template>
+    </van-cell>
+  </van-cell-group>
+</van-radio-group>
 
-        <a-col :span="24">
-          <a-card>
-            <a-row justify="start" :gutter="[16,16]">
-              <a-col :span="24">
-                <a-space :size="24">
-                  <a-button @click="get_random_audio"> 随机音频示例</a-button>
-                  <a-tooltip title="随机音频搜索目录">
-                    <a-input v-model:value="audio_dir" placeholder="随机音频目录"/>
-                  </a-tooltip>
-                  <a-tooltip title="随机音频搜索语言">
-                    <a-select
-                        ref="select"
-                        v-model:value="random_language"
-                        style="width: 100%"
-                        @focus="focus"
-                    >
-                      <a-select-option value="ZH"></a-select-option>
-                      <a-select-option value="JP"></a-select-option>
-                      <a-select-option value="EN"></a-select-option>
-                      <a-select-option value="随机"></a-select-option>
-                    </a-select>
-                  </a-tooltip>
-                  <a-upload
-                      :show-upload-list="false"
-                      :multiple="false"
-                      :before-upload="get_audio"
-                      accept="audio/*"
-                  >
-                    <a-button>
-                      <template #icon>
-                        <UploadOutlined/>
-                      </template>
-                      上传音频
-                    </a-button>
-                  </a-upload>
-                  <a-button @click="global_use_reference_audio=!global_use_reference_audio">
-                    {{ global_use_reference_audio ? "取消emo音频" : "作为emo音频" }}
-                  </a-button>
-                  <a-switch v-model:checked="global_use_reference_audio"></a-switch>
-                </a-space>
-              </a-col>
-              <a-col :span="24">
-                <a-space size="large" :style="{opacity:random_audio.valid?1:0}">
-                  <audio :src="random_audio.data.src" controls></audio>
-                  <a-button :href="random_audio.data.src"
-                            :download="  random_audio.data.name===''? random_audio.data.speaker + ': ' + texts + '.wav' : random_audio.data.name">
-                    <template #icon>
-                      <DownloadOutlined/>
-                    </template>
-                    下载音频
-                  </a-button>
-                </a-space>
-              </a-col>
-            </a-row>
-          </a-card>
-        </a-col>
-      </a-row>
-    </a-col>
-  </a-row>
+  <van-card
+      :desc="audio_desc"
+      :title="audio_title"
+    >
+  <template #thumb>
+      <van-image ref="audioCover" id="audioCover" :src="audio_pic" fit="cover" />
+  </template>
+    <template #tags>
+      <van-field type="textarea" v-model="texts" v-bind:maxlength="100" placeholder="请输入文本(最大100字)" :rows="4"/>
+    </template>
+  </van-card>
 
-  <van-action-bar>
-      <van-action-bar-button type="danger" @click="sorry">
-        生成音频
-      </van-action-bar-button>
-    </van-action-bar>
+  <!-- 音频相关 -->
+
+  <van-row>
+    <van-col :spinning=model_audio_loading />
+    <van-col  :style="{opacity: model_audio_valid? 1: 0}" size="large">
+
+      <audio :src="model_audio_data_src" controls></audio>
+    </van-col>
+  </van-row>
+
+<van-action-bar>
+  <van-action-bar-icon icon="chat-o" text="定制声音" />
+  <van-action-bar-button  type="primary" @click="infers(false)" :loading="generate_audio_loading" text="生成音频" />
+</van-action-bar>
+
 </template>
 
 
+
 <style lang="less">
+
 .goods {
   padding-bottom: 50px;
 
@@ -513,5 +410,6 @@ export default {
   &-tag {
     margin-left: 5px;
   }
+
 }
 </style>
