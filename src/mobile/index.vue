@@ -25,14 +25,18 @@ export default {
        if(modelId == 0) {
         this.audio_title = '直播带货场景';
         this.audio_desc = '为直播内容创作者、主播提供全球最好的中文声音克隆技术';
+        this.checked_model_id = '0';
+        this.texts = "这不仅仅是一款茶，更是西湖文化的代表。龙井绿茶可追溯到几百年前。传说，一位僧人在西湖边发现了一条龙，而龙井茶正是在这片龙经过的地方长出来的。因此，龙井绿茶被誉为“龙出井而茶香溢”的传世佳茗。"
       }
       if(modelId == 1) {
         this.audio_title = '知识付费场景';
         this.audio_desc = '为知识付费、读书、博客APP等平台的老师们提供全球最好的中文声音克隆技术';
+        this.checked_model_id = '1';
+        this.texts = "你好，我是少年商学院创始人，张华。欢迎来到家长营公开课。我的声音都是机器合成的。语音语调附带情感。"
       }
     }
     return {
-      checked_model_id: 0,
+      checked_model_id: '0',
       audio_pic: 'img/live0.jpg',
       audio_title: '直播带货场景',
       audio_desc: '为直播内容创作者、主播提供全球最好的中文声音克隆技术',
@@ -110,6 +114,7 @@ export default {
                 "model_path": "models/lilith/G_2400.pth",
                 "device": "cpu",
                 "language": "ZH",
+                'alias': "小莉",
                 "spk2id": {
                   "lilith": 0
                 },
@@ -123,6 +128,7 @@ export default {
                 "model_path": "models/zhanghua/G_27400.pth",
                 "device": "cpu",
                 "language": "ZH",
+                'alias': "张老师",
                 "spk2id": {
                   "zhanghua": 1
                 },
@@ -156,6 +162,7 @@ export default {
                 device: data[model_id]["device"],
                 speakers: speakers,
                 speaker_name: speakers[0],
+                speaker_alias: data[model_id]["alias"],
                 sdp_ratio: 0.2,
                 noise: 0.2,
                 noisew: 0.9,
@@ -267,7 +274,7 @@ export default {
         this.generate_audio_loading = true
         model.audio.valid = false
         if (model.id === this.checked_model_id) {
-          showNotify({message : model.speaker_name + " 音频生成中" , type: 'success'});
+          showNotify({message : model.speaker_alias + " 音频生成中" , type: 'success'});
           await this.infer_audio(this.texts, model, this.auto_split)
         }
       }
@@ -327,9 +334,20 @@ export default {
 }
 </script>
 <template>
-  <van-radio-group v-model="checked_model_id">
+
+  <div>
+    <van-nav-bar
+      title="全球最好的中文声音克隆"
+      @click-left="onLeftClick"
+      fixed
+      placeholder
+      class="wechat-navbar"
+    />
+    <!-- 页面内容 -->
+    <div class="page-content">
+      <van-radio-group v-model="checked_model_id">
   <van-cell-group inset>
-    <van-cell title="直播带货-小莉" @click="selectModel('0')" clickable >
+    <van-cell title="直播带货-小莉" clickable @click="selectModel('0')">
       <template #right-icon>
         <van-radio name="0"  />
       </template>
@@ -369,12 +387,44 @@ export default {
   <van-action-bar-button  type="primary" @click="infers(false)" :loading="generate_audio_loading" text="生成音频" />
 </van-action-bar>
 
+    </div>
+  </div>
+
 </template>
 
 
 
-<style lang="less">
+<style scoped>
+::v-deep .van-nav-bar {
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
 
+::v-deep .van-action-bar-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+}
+
+::v-deep .van-action-bar-icon__icon {
+  font-size: 24px;
+}
+
+::v-deep .van-action-bar-icon__text {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #333333;
+}
+
+
+
+.page-content {
+  padding-top: 44px; /* 保证内容在顶部栏下方 */
+  /* 这里可以添加其他样式，根据你的需求进行调整 */
+}
 .goods {
   padding-bottom: 50px;
 
