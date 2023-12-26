@@ -28,6 +28,12 @@
         <a-menu-item key="4">
           <span>{{ collapsed ? "帮助" : "帮助页面" }}</span>
         </a-menu-item>
+        <a-menu-item key="5">
+          <span>{{ collapsed ? "移动端" : "移动端" }}</span>
+        </a-menu-item>
+        <a-menu-item key="6">
+          <span>{{ collapsed ? "克隆" : "克隆" }}</span>
+        </a-menu-item>
 
       </a-menu>
     </a-layout-sider>
@@ -44,9 +50,15 @@
       <a-layout-content style="margin: 0 16px" v-show="selectedKeys[0] === '4'">
         <help></help>
       </a-layout-content>
-      <a-layout-footer style="text-align: center">
+      <a-layout-content style="margin: 0 16px" v-show="selectedKeys[0] === '5'">
+        <mobile></mobile>
+      </a-layout-content>
+      <a-layout-content style="margin: 0 16px" v-show="selectedKeys[0] === '6'">
+        <ad></ad>
+      </a-layout-content>
+      <!-- <a-layout-footer style="text-align: center">
         Designed By Sora
-      </a-layout-footer>
+      </a-layout-footer> -->
     </a-layout>
   </a-layout>
 </template>
@@ -55,6 +67,8 @@ import {defineComponent} from "vue";
 import infer from "@/infer.vue";
 import help from "@/help.vue";
 import dataset from "@/dataset.vue";
+import mobile from "@/mobile/index.vue";
+import ad from "@/ad/index.vue";
 
 export default defineComponent({
   data() {
@@ -63,7 +77,7 @@ export default defineComponent({
       collapsed: true
     }
   },
-  components: {dataset, infer, help}
+  components: {dataset, infer, help , mobile , ad}
 })
 </script>
 <style scoped>
