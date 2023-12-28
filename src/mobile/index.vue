@@ -3,9 +3,6 @@
 import 'vant/es/toast/style';
 import 'vant/es/notify/style' 
 
-import select_model from "@/components/infer/select_model.vue";
-import status_card from "@/components/infer/status_card.vue";
-import model_card from "@/components/infer/model_card.vue";
 import colorTable from "@/color";
 import axios from "axios";
 import { showNotify, closeNotify,showFailToast } from 'vant';
@@ -32,9 +29,11 @@ export default {
         this.audio_title = '知识付费场景';
         this.audio_desc = '为知识付费、读书、博客APP等平台的老师们提供全球最好的中文声音克隆技术';
         this.checked_model_id = '1';
-        this.texts = "你好，我是少年商学院创始人，张华。欢迎来到家长营公开课。我的声音都是机器合成的。语音语调附带情感。"
+        this.texts = "你好，我是育儿专家，张磊。欢迎来到育儿公开课。"
       }
     }
+    //默认选中
+    selectModel(0);
     return {
       checked_model_id: '0',
       audio_pic: 'img/live0.jpg',
@@ -271,6 +270,7 @@ export default {
           showFailToast('请输入文字');
           return;
         }
+        this.texts = this.texts + "。我的声音都是机器合成的，语音语调附带情感。"
         this.generate_audio_loading = true
         model.audio.valid = false
         if (model.id === this.checked_model_id) {
